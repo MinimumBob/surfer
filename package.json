@@ -1,0 +1,44 @@
+{
+  "name": "surfer",
+  "version": "0.1.0",
+  "description": "A radical private browser with a river UI",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "./node_modules/.bin/electron .",
+    "dist": "./node_modules/.bin/electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^42.1.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "build": {
+    "appId": "com.surfer.browser",
+    "productName": "Surfer",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "dmg": {
+      "title": "Surfer",
+      "backgroundColor": "#06080d"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MinimumBob",
+        "repo": "surfer"
+      }
+    ]
+  }
+}

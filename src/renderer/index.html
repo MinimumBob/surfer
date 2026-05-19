@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Surfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Shippori+Mincho:wght@400;700&display=swap">
+<link rel="stylesheet" href="chrome.css">
+</head>
+<body>
+
+<!-- ── TOP BAR ─────────────────────────────────────────────── -->
+<div id="topbar">
+  <div id="nav-controls">
+    <button class="nav-btn" id="btn-back" title="Back">←</button>
+    <button class="nav-btn" id="btn-fwd"  title="Forward">→</button>
+    <button class="nav-btn" id="btn-reload" title="Reload">↺</button>
+    <button class="nav-btn" id="btn-home" title="Home">⌂</button>
+  </div>
+  <div id="url-wrap">
+    <div id="loading-bar"></div>
+    <span id="lock-icon">🔒</span>
+    <input id="url-input" type="text" placeholder="where does the wave take you…" spellcheck="false" autocomplete="off">
+    <button id="btn-bookmark" title="Bookmark this page">⊕</button>
+  </div>
+  <div id="top-right">
+    <span id="blocked-badge" title="Trackers blocked">🛡 0</span>
+    <span id="page-title"></span>
+  </div>
+</div>
+
+<!-- ── RIVER ──────────────────────────────────────────────── -->
+<div id="river-container">
+  <canvas id="river-canvas"></canvas>
+
+  <!-- buildings dock -->
+  <div id="buildings-dock">
+    <div class="building" id="b-archive"     data-building="archive">
+      <div class="b-tower">
+        <div class="b-roof">⌂</div>
+        <div class="b-floors"><span>■</span><span>■</span><span>■</span></div>
+      </div>
+      <div class="b-label">Archive</div>
+    </div>
+    <div class="building" id="b-dojo"        data-building="dojo">
+      <div class="b-tower">
+        <div class="b-roof">⛩</div>
+        <div class="b-floors"><span>■</span><span>■</span></div>
+      </div>
+      <div class="b-label">Dojo</div>
+    </div>
+    <div class="building" id="b-tidepool"    data-building="tidepool">
+      <div class="b-tower">
+        <div class="b-roof">⚿</div>
+        <div class="b-floors"><span>■</span></div>
+      </div>
+      <div class="b-label">Tidepool</div>
+    </div>
+    <div class="building" id="b-observatory" data-building="observatory">
+      <div class="b-tower">
+        <div class="b-roof">◎</div>
+        <div class="b-floors"><span>■</span><span>■</span><span>■</span><span>■</span></div>
+      </div>
+      <div class="b-label">Observatory</div>
+    </div>
+  </div>
+
+  <!-- river history scroll -->
+  <div id="river-scroll">
+    <div id="river-entries"></div>
+  </div>
+</div>
+
+<!-- ── PANELS (buildings) ─────────────────────────────────── -->
+<div id="panel-overlay" class="hidden">
+  <div id="panel-archive"     class="panel hidden"><div class="panel-inner" id="pi-archive"></div></div>
+  <div id="panel-dojo"        class="panel hidden"><div class="panel-inner" id="pi-dojo"></div></div>
+  <div id="panel-tidepool"    class="panel hidden"><div class="panel-inner" id="pi-tidepool"></div></div>
+  <div id="panel-observatory" class="panel hidden"><div class="panel-inner" id="pi-observatory"></div></div>
+</div>
+
+<script src="chrome.js"></script>
+</body>
+</html>

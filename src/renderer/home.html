@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Surfer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #06080d; }
+
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+/* Search bar */
+#search-wrap {
+  position: fixed;
+  top: 32px; left: 50%; transform: translateX(-50%);
+  width: min(560px, 90vw);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  background: rgba(8, 16, 28, 0.75);
+  border: 1px solid rgba(180, 210, 230, 0.25);
+  border-radius: 40px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s, background 0.2s;
+}
+#search-wrap:focus-within {
+  border-color: rgba(201, 169, 110, 0.6);
+  background: rgba(8, 16, 28, 0.9);
+}
+#search-icon { padding: 0 14px 0 18px; font-size: 16px; color: rgba(180,210,230,0.5); font-family: serif; }
+#search-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: #ddeeff; font-size: 15px; padding: 13px 0;
+  font-family: 'Georgia', 'Noto Serif JP', serif;
+  letter-spacing: 0.02em;
+}
+#search-input::placeholder { color: rgba(180,210,230,0.35); font-style: italic; }
+#search-go {
+  padding: 6px 16px; margin-right: 6px;
+  background: rgba(201,169,110,0.15); border: 1px solid rgba(201,169,110,0.3);
+  color: rgba(201,169,110,0.9); border-radius: 30px; cursor: pointer;
+  font-size: 13px; font-family: serif; letter-spacing: 0.05em;
+  transition: background 0.15s;
+}
+#search-go:hover { background: rgba(201,169,110,0.28); }
+
+/* Date/time */
+#datetime {
+  position: fixed;
+  top: 88px; left: 50%; transform: translateX(-50%);
+  text-align: center; pointer-events: none;
+  z-index: 90;
+}
+#time-display { font-size: 13px; color: rgba(180,210,230,0.35); font-family: 'Georgia', serif; letter-spacing: 0.15em; }
+
+/* Building tooltips */
+.b-tooltip {
+  position: fixed;
+  background: rgba(6, 12, 22, 0.92);
+  border: 1px solid rgba(180,210,230,0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #c8dce8;
+  font-family: 'Georgia', serif;
+  font-size: 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 200;
+  max-width: 200px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.b-tooltip.visible { opacity: 1; }
+.b-tooltip-title { font-size: 15px; color: #c9a96e; margin-bottom: 4px; font-weight: bold; }
+.b-tooltip-jp { font-size: 11px; color: rgba(180,210,230,0.5); margin-bottom: 6px; }
+.b-tooltip-desc { font-size: 12px; color: rgba(180,210,230,0.7); line-height: 1.5; }
+
+/* History toggle + drawer */
+#history-toggle {
+  position: fixed;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(8,16,28,0.75);
+  border: 1px solid rgba(180,210,230,0.2);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 5px 20px 3px;
+  color: rgba(180,210,230,0.55);
+  font-family: 'Georgia', serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, bottom 0.35s cubic-bezier(0.16,1,0.3,1);
+  user-select: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+#history-toggle:hover { color: #c9a96e; border-color: rgba(201,169,110,0.3); }
+#history-toggle.open  { bottom: 130px; color: #c9a96e; }
+
+#history-drawer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 130px;
+  background: linear-gradient(180deg, rgba(6,10,18,0.0) 0%, rgba(6,10,18,0.92) 30%);
+  z-index: 99;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  display: flex; align-items: center;
+  padding: 0 200px 0 200px;
+  overflow: hidden;
+}
+#history-drawer.open { transform: translateY(0); }
+#history-entries {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding: 10px 0 16px;
+  align-items: center;
+  width: 100%;
+}
+#history-entries::-webkit-scrollbar { display: none; }
+.h-entry {
+  flex-shrink: 0;
+  width: 130px;
+  background: rgba(10,20,38,0.75);
+  border: 1px solid rgba(180,210,230,0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.h-entry:hover { background: rgba(20,45,80,0.85); border-color: rgba(201,169,110,0.35); transform: translateY(-3px); }
+.h-entry-title { font-size: 11px; color: #c8dce8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Georgia', serif; }
+.h-entry-url   { font-size: 10px; color: rgba(180,210,230,0.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+.h-entry-time  { font-size: 9px;  color: rgba(180,210,230,0.25); margin-top: 4px; font-style: italic; }
+
+/* Panel overlay */
+#panel {
+  position: fixed;
+  right: 0; top: 0; bottom: 0;
+  width: 380px;
+  background: rgba(6, 10, 18, 0.96);
+  border-left: 1px solid rgba(180,210,230,0.15);
+  z-index: 300;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+#panel.open { transform: translateX(0); }
+
+#panel-header {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid rgba(180,210,230,0.1);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+#panel-title { font-size: 20px; color: #c9a96e; font-family: 'Georgia', serif; }
+#panel-title-jp { font-size: 11px; color: rgba(180,210,230,0.4); margin-top: 3px; font-family: serif; }
+#panel-close {
+  background: none; border: 1px solid rgba(180,210,230,0.2);
+  color: rgba(180,210,230,0.6); width: 28px; height: 28px; border-radius: 50%;
+  cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0; margin-top: 2px;
+}
+#panel-close:hover { background: rgba(180,210,230,0.1); color: #fff; }
+#panel-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+#panel-body::-webkit-scrollbar { width: 4px; }
+#panel-body::-webkit-scrollbar-track { background: transparent; }
+#panel-body::-webkit-scrollbar-thumb { background: rgba(180,210,230,0.15); border-radius: 2px; }
+
+.p-input {
+  width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(180,210,230,0.18);
+  border-radius: 8px; padding: 9px 12px; color: #ddeeff; font-family: 'Georgia', serif;
+  font-size: 13px; outline: none; margin-bottom: 10px; transition: border-color 0.2s;
+}
+.p-input:focus { border-color: rgba(201,169,110,0.4); }
+.p-input::placeholder { color: rgba(180,210,230,0.3); font-style: italic; }
+.p-btn {
+  background: rgba(201,169,110,0.12); border: 1px solid rgba(201,169,110,0.3);
+  color: rgba(201,169,110,0.9); padding: 8px 16px; border-radius: 8px;
+  cursor: pointer; font-family: 'Georgia', serif; font-size: 13px;
+  transition: background 0.15s; width: 100%; margin-bottom: 8px;
+}
+.p-btn:hover { background: rgba(201,169,110,0.22); }
+.p-btn-sm { width: auto; padding: 6px 12px; font-size: 12px; margin-bottom: 0; }
+.p-item {
+  background: rgba(255,255,255,0.025); border: 1px solid rgba(180,210,230,0.1);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+}
+.p-item:hover { background: rgba(26,64,96,0.35); border-color: rgba(180,210,230,0.2); }
+.p-item-body { flex: 1; overflow: hidden; }
+.p-item-title { font-size: 13px; color: #ddeeff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-item-sub { font-size: 11px; color: rgba(180,210,230,0.45); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-item-del { background: none; border: none; color: rgba(180,210,230,0.3); cursor: pointer; font-size: 14px; padding: 2px 6px; transition: color 0.15s; flex-shrink: 0; }
+.p-item-del:hover { color: #e55; }
+.p-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.p-flex1 { flex: 1; margin-bottom: 0; }
+.p-section { font-size: 10px; color: rgba(180,210,230,0.35); letter-spacing: 0.15em; text-transform: uppercase; margin: 14px 0 8px; font-family: serif; }
+.p-empty { text-align: center; color: rgba(180,210,230,0.3); font-size: 13px; padding: 32px 16px; font-style: italic; font-family: serif; line-height: 1.6; }
+.p-notice { background: rgba(201,169,110,0.06); border: 1px solid rgba(201,169,110,0.15); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: rgba(180,210,230,0.6); margin-bottom: 14px; line-height: 1.5; }
+.dojo-msg { padding: 10px 13px; border-radius: 8px; font-size: 13px; line-height: 1.6; margin-bottom: 10px; font-family: 'Georgia', serif; }
+.dojo-user { background: rgba(201,169,110,0.1); border: 1px solid rgba(201,169,110,0.2); color: rgba(201,169,110,0.9); align-self: flex-end; }
+.dojo-ai { background: rgba(180,210,230,0.06); border: 1px solid rgba(180,210,230,0.12); color: #c8dce8; }
+.dojo-think { color: rgba(180,210,230,0.4); font-style: italic; border: 1px dashed rgba(180,210,230,0.12); }
+#dojo-messages { display: flex; flex-direction: column; min-height: 120px; margin-bottom: 12px; }
+#dojo-ta { resize: none; height: 60px; }
+.obs-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(180,210,230,0.07); }
+.obs-label { font-size: 12px; color: rgba(180,210,230,0.6); }
+.obs-val { font-size: 18px; font-weight: bold; font-family: 'Georgia', serif; color: #c9a96e; }
+.obs-val.good { color: #4ade80; }
+.obs-val.bad  { color: #f87171; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="search-wrap">
+  <span id="search-icon">⛵</span>
+  <input id="search-input" type="text" placeholder="where does the tide take you…" autocomplete="off" spellcheck="false">
+  <button id="search-go">渡る</button>
+</div>
+
+<div id="datetime"><div id="time-display"></div></div>
+
+<div id="history-toggle" title="Recent pages">
+  <span>〜</span> Recent
+</div>
+<div id="history-drawer">
+  <div id="history-entries"></div>
+</div>
+
+<div class="b-tooltip" id="tip">
+  <div class="b-tooltip-title" id="tip-title"></div>
+  <div class="b-tooltip-jp" id="tip-jp"></div>
+  <div class="b-tooltip-desc" id="tip-desc"></div>
+</div>
+
+<div id="panel">
+  <div id="panel-header">
+    <div>
+      <div id="panel-title"></div>
+      <div id="panel-title-jp"></div>
+    </div>
+    <button id="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div id="panel-body"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, t = 0;
+let dpr = window.devicePixelRatio || 1;
+
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  buildBuildings();
+}
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('time-display').textContent = `${h}:${m}`;
+}
+updateClock(); setInterval(updateClock, 30000);
+
+// ── Building definitions ───────────────────────────────────────────────────
+const BUILDINGS = [
+  {
+    id: 'archive', name: 'Archive', jp: '古文書館',
+    desc: 'Saved pages & bookmarks',
+    side: 'left', xFrac: 0.10,
+    style: 'pagoda', color: '#8aabcc', accentColor: '#c9a96e',
+    scale: 1.2,
+  },
+  {
+    id: 'tidepool', name: 'Tidepool', jp: '秘密の水溜り',
+    desc: 'Passwords & secrets',
+    side: 'left', xFrac: 0.24,
+    style: 'shrine', color: '#7abba0', accentColor: '#a0ddc0',
+    scale: 0.85,
+  },
+  {
+    id: 'observatory', name: 'Observatory', jp: '観測所',
+    desc: 'Privacy & tracker shield',
+    side: 'right', xFrac: 0.76,
+    style: 'tower', color: '#6a8ec0', accentColor: '#90bce0',
+    scale: 1.1,
+  },
+  {
+    id: 'dojo', name: 'Dojo', jp: '知の道場',
+    desc: 'AI reads & answers questions',
+    side: 'right', xFrac: 0.90,
+    style: 'templeGate', color: '#aa88cc', accentColor: '#cc99ee',
+    scale: 1.0,
+  },
+];
+
+let builtBuildings = [];
+
+function getRiverY() { return H * 0.55; }
+
+function buildBuildings() {
+  builtBuildings = BUILDINGS.map(b => {
+    const s = b.scale || 1;
+    const baseW = 72 * s, baseH = 160 * s;
+    const ry = getRiverY();
+    const by = ry - baseH + 8;
+    return { ...b, x: W * b.xFrac, y: by, w: baseW, h: baseH, s };
+  });
+}
+
+// ── Hit test ───────────────────────────────────────────────────────────────
+function hitBuilding(mx, my) {
+  for (const b of builtBuildings) {
+    const pad = 18;
+    if (mx >= b.x - b.w/2 - pad && mx <= b.x + b.w/2 + pad &&
+        my >= b.y - 30 && my <= b.y + b.h + 30) return b;
+  }
+  return null;
+}
+
+// ── Draw ───────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  sky.addColorStop(0, '#060a12');
+  sky.addColorStop(0.5, '#080e1c');
+  sky.addColorStop(1, '#0a1428');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H * 0.6);
+
+  // Moon
+  drawMoon();
+
+  // Ink wash clouds / mist
+  drawMist();
+
+  // Stars
+  drawStars();
+
+  // River banks (ink-wash ground)
+  drawBanks();
+
+  // Buildings
+  builtBuildings.forEach(b => drawBuilding(b));
+
+  // River
+  drawRiver();
+
+  // Foreground reeds / foliage
+  drawFoliage();
+
+  t += 0.006;
+  requestAnimationFrame(draw);
+}
+
+function drawMoon() {
+  const mx = W * 0.72, my = H * 0.14;
+  // Halo
+  const halo = ctx.createRadialGradient(mx, my, 10, mx, my, 80);
+  halo.addColorStop(0, 'rgba(220,200,160,0.12)');
+  halo.addColorStop(1, 'rgba(220,200,160,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mx, my, 80, 0, Math.PI*2); ctx.fill();
+  // Moon body
+  ctx.fillStyle = '#e8dfc4';
+  ctx.beginPath(); ctx.arc(mx, my, 18, 0, Math.PI*2); ctx.fill();
+  // Ink-wash surface marks
+  ctx.fillStyle = 'rgba(160,140,100,0.18)';
+  ctx.beginPath(); ctx.ellipse(mx-5, my-3, 7, 5, -0.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(mx+4, my+5, 4, 3, 0.5, 0, Math.PI*2); ctx.fill();
+  // Moon reflection on river
+  const ry = getRiverY();
+  const rg = ctx.createLinearGradient(mx, ry, mx, H);
+  rg.addColorStop(0, 'rgba(220,200,160,0.18)');
+  rg.addColorStop(1, 'rgba(220,200,160,0)');
+  ctx.fillStyle = rg;
+  ctx.fillRect(mx - 15, ry, 30, H - ry);
+}
+
+function drawStars() {
+  const stars = [
+    [0.05,0.08],[0.12,0.04],[0.18,0.11],[0.28,0.06],[0.35,0.03],
+    [0.42,0.09],[0.52,0.05],[0.58,0.12],[0.63,0.04],[0.80,0.07],
+    [0.88,0.03],[0.92,0.10],[0.96,0.06],[0.08,0.18],[0.33,0.15],
+    [0.48,0.17],[0.68,0.13],[0.85,0.16],[0.15,0.22],[0.44,0.20],
+  ];
+  stars.forEach(([xf, yf], i) => {
+    const x = W*xf, y = H*yf;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + i * 0.9);
+    ctx.fillStyle = `rgba(220,230,245,${0.25 + pulse * 0.35})`;
+    ctx.beginPath(); ctx.arc(x, y, 1 + pulse * 0.5, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+function drawMist() {
+  for (let i = 0; i < 3; i++) {
+    const x = (W * (i * 0.35 + 0.1) + Math.sin(t * 0.3 + i) * 30) % W;
+    const y = H * (0.3 + i * 0.05);
+    const w = W * (0.35 + i * 0.08);
+    const mist = ctx.createRadialGradient(x + w/2, y, 0, x + w/2, y, w * 0.5);
+    mist.addColorStop(0, 'rgba(180,210,235,0.04)');
+    mist.addColorStop(1, 'rgba(180,210,235,0)');
+    ctx.fillStyle = mist;
+    ctx.fillRect(x, y - 30, w, 60);
+  }
+}
+
+function drawBanks() {
+  const ry = getRiverY();
+  const bankH = H * 0.08;
+
+  // Top bank (far shore)
+  const tbank = ctx.createLinearGradient(0, ry - bankH, 0, ry);
+  tbank.addColorStop(0, 'rgba(12,20,35,0)');
+  tbank.addColorStop(1, '#0d1a2a');
+  ctx.fillStyle = tbank;
+  ctx.beginPath();
+  ctx.moveTo(0, ry);
+  for (let i = 0; i <= 40; i++) {
+    const x = (i / 40) * W;
+    const y = ry - bankH * 0.3 - Math.sin(i * 0.4) * bankH * 0.15 - Math.sin(i * 0.9 + 1) * bankH * 0.08;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, ry); ctx.lineTo(0, ry); ctx.closePath();
+  ctx.fill();
+
+  // Bottom bank (near shore)
+  const bbank = ctx.createLinearGradient(0, ry + H*0.12, 0, H);
+  bbank.addColorStop(0, '#0d1a2a');
+  bbank.addColorStop(0.3, '#0a1525');
+  bbank.addColorStop(1, '#060a12');
+  ctx.fillStyle = bbank;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(W, H);
+  ctx.lineTo(W, ry + H * 0.13);
+  for (let i = 40; i >= 0; i--) {
+    const x = (i / 40) * W;
+    const y = ry + H * 0.12 + Math.sin(i * 0.5 + 2) * H * 0.02;
+    ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawRiver() {
+  const ry = getRiverY();
+  const rh = H * 0.13;
+
+  // River base
+  const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
+  rg.addColorStop(0, '#0a1f3a');
+  rg.addColorStop(0.5, '#0c2440');
+  rg.addColorStop(1, '#081830');
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, ry, W, rh);
+
+  // Wave layers
+  for (let layer = 0; layer < 4; layer++) {
+    const yOff = ry + rh * (0.15 + layer * 0.2);
+    const amp = rh * (0.03 + layer * 0.015);
+    const alpha = 0.12 + layer * 0.06;
+    ctx.beginPath();
+    for (let i = 0; i <= 80; i++) {
+      const x = (i / 80) * W;
+      const y = yOff + Math.sin(i * 0.3 + t * (2 - layer * 0.3)) * amp
+                     + Math.sin(i * 0.7 + t * (1.5 + layer * 0.2) + 1) * amp * 0.4;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `rgba(180,220,255,${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Foam edge (top of river)
+  ctx.beginPath();
+  for (let i = 0; i <= 80; i++) {
+    const x = (i / 80) * W;
+    const y = ry + Math.sin(i * 0.6 + t * 3) * rh * 0.025 + Math.sin(i * 1.2 + t * 2) * rh * 0.01;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(200,225,245,0.35)';
+  ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Moon shimmer on water
+  const mx = W * 0.72;
+  for (let i = 0; i < 6; i++) {
+    const sx = mx + (Math.random() - 0.5) * 40;
+    const sy = ry + (i / 6) * rh;
+    ctx.fillStyle = `rgba(220,200,160,${0.06 - i * 0.008})`;
+    ctx.fillRect(sx - 12, sy, 24, 2);
+  }
+}
+
+function drawFoliage() {
+  const ry = getRiverY();
+  // Reeds on far bank
+  const reedPositions = [0.04,0.07,0.09,0.13,0.16,0.84,0.87,0.91,0.94,0.97];
+  reedPositions.forEach((xf, i) => {
+    const x = W * xf;
+    const baseY = ry - 2;
+    const h = 40 + Math.sin(i * 1.3) * 15;
+    const sway = Math.sin(t * 1.2 + i * 0.8) * 4;
+    ctx.beginPath();
+    ctx.moveTo(x, baseY);
+    ctx.quadraticCurveTo(x + sway * 0.5, baseY - h * 0.6, x + sway, baseY - h);
+    ctx.strokeStyle = 'rgba(100,130,110,0.55)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+    // Reed head
+    ctx.fillStyle = 'rgba(80,110,90,0.6)';
+    ctx.beginPath(); ctx.ellipse(x + sway, baseY - h, 2, 6, 0, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Ink-wash pine on far left/right
+  drawInkTree(W * 0.02, ry - 60, 0.8);
+  drawInkTree(W * 0.98, ry - 70, 0.8);
+}
+
+function drawInkTree(x, y, scale) {
+  const branches = [
+    [0, 0, -8, -30, -22, -42],
+    [0, 0, 10, -25, 26, -38],
+    [0, -18, -12, -32, -28, -48],
+    [0, -18, 14, -30, 30, -44],
+    [0, -36, -8, -52, -18, -60],
+    [0, -36, 10, -50, 20, -58],
+  ];
+  ctx.strokeStyle = 'rgba(80,100,90,0.5)';
+  ctx.lineWidth = 1 * scale;
+  branches.forEach(([x1,y1,x2,y2,x3,y3]) => {
+    ctx.beginPath();
+    ctx.moveTo(x + x1*scale, y + y1*scale);
+    ctx.quadraticCurveTo(x + x2*scale, y + y2*scale, x + x3*scale, y + y3*scale);
+    ctx.stroke();
+  });
+  // Trunk
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 20*scale);
+  ctx.lineWidth = 2*scale; ctx.stroke();
+}
+
+// ── Draw a building in Japanese ink style ─────────────────────────────────
+function drawBuilding(b) {
+  const { x, y, s, style, color, accentColor } = b;
+  const isHovered = hoveredBuilding && hoveredBuilding.id === b.id;
+
+  ctx.save();
+  ctx.globalAlpha = isHovered ? 1.0 : 0.78;
+
+  if (style === 'pagoda')     drawPagoda(x, y, s, color, accentColor, isHovered);
+  if (style === 'shrine')     drawShrineBuilding(x, y, s, color, accentColor, isHovered);
+  if (style === 'tower')      drawTowerBuilding(x, y, s, color, accentColor, isHovered);
+  if (style === 'templeGate') drawTempleGate(x, y, s, color, accentColor, isHovered);
+
+  // Ground shadow
+  ctx.globalAlpha = isHovered ? 0.3 : 0.18;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(x, y + b.h + 4, b.w * 0.55, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.globalAlpha = isHovered ? 0.95 : 0.55;
+  ctx.font = `${Math.round(11*s)}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = isHovered ? '#ddeeff' : 'rgba(180,205,225,0.7)';
+  ctx.fillText(b.name, x, y + b.h + 18);
+  ctx.font = `${Math.round(10*s)}px Georgia, serif`;
+  ctx.fillStyle = isHovered ? 'rgba(201,169,110,0.9)' : 'rgba(201,169,110,0.4)';
+  ctx.fillText(b.jp, x, y + b.h + 30);
+
+  ctx.restore();
+}
+
+// ── ink brush stroke helper ────────────────────────────────────────────────
+function inkStroke(points, lw, color) {
+  if (points.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+  ctx.strokeStyle = color; ctx.lineWidth = lw;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+}
+
+// ── Curved eave helper: draws one curved roof eave ────────────────────────
+function drawEave(x, y, w, lift, color, lw) {
+  // Upswept ends (irimoya/kirizuma style)
+  const hw = w / 2;
+  ctx.beginPath();
+  ctx.moveTo(x - hw - 6, y + 4);
+  ctx.bezierCurveTo(x - hw * 0.5, y + lift * 0.3, x + hw * 0.5, y + lift * 0.3, x + hw + 6, y + 4);
+  ctx.strokeStyle = color; ctx.lineWidth = lw;
+  ctx.lineCap = 'round'; ctx.stroke();
+  // Eave tips curl up
+  ctx.beginPath(); ctx.moveTo(x - hw - 6, y + 4);
+  ctx.quadraticCurveTo(x - hw - 10, y + 1, x - hw - 9, y - 3);
+  ctx.strokeStyle = color; ctx.lineWidth = lw * 0.7; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + hw + 6, y + 4);
+  ctx.quadraticCurveTo(x + hw + 10, y + 1, x + hw + 9, y - 3);
+  ctx.stroke();
+}
+
+// ── Pagoda (Archive) ──────────────────────────────────────────────────────
+function drawPagoda(x, y, s, color, accent, hov) {
+  const tiers = 4;
+  const tierH = 28 * s;
+  const baseW = 60 * s;
+  let cy = y;
+
+  for (let i = 0; i < tiers; i++) {
+    const tw = baseW - i * 8 * s;
+    const tx = x - tw / 2;
+    const eaveW = tw + 18 * s;
+
+    // Platform/body of tier
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(10,18,32,0.88)' : 'rgba(14,24,42,0.82)';
+    ctx.strokeStyle = color + '60';
+    ctx.lineWidth = 0.8 * s;
+    roundRect(tx, cy + 10*s, tw, tierH * 0.55, 2);
+    ctx.fill(); ctx.stroke();
+
+    // Vertical pillars on body
+    const pillarCount = i < 2 ? 3 : 2;
+    for (let p = 0; p < pillarCount; p++) {
+      const px = tx + (p + 0.5) * (tw / pillarCount) - 1.5 * s;
+      ctx.fillStyle = color + '35';
+      ctx.fillRect(px, cy + 10*s, 3*s, tierH * 0.55);
+    }
+
+    // Windows (paper lantern style)
+    if (i < 3) {
+      const numW = Math.max(1, pillarCount - 1);
+      for (let w2 = 0; w2 < numW; w2++) {
+        const wx = tx + (w2 + 1) * (tw / (numW + 1)) - 4*s;
+        const wy = cy + 13*s;
+        const lit = Math.sin(t * 0.4 + i * 1.5 + w2 * 2.2) > -0.3;
+        // Arch-top window
+        ctx.fillStyle = lit ? accent + '50' : 'rgba(20,35,55,0.7)';
+        ctx.beginPath();
+        ctx.arc(wx + 4*s, wy + 4*s, 4*s, Math.PI, 0);
+        ctx.rect(wx, wy + 4*s, 8*s, 6*s);
+        ctx.fill();
+        if (lit) {
+          ctx.fillStyle = accent + '18';
+          ctx.beginPath();
+          ctx.arc(wx + 4*s, wy + 4*s, 7*s, Math.PI, 0);
+          ctx.rect(wx - 3*s, wy + 4*s, 14*s, 8*s);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Curved bracket supports (tokyō)
+    ctx.strokeStyle = color + '55';
+    ctx.lineWidth = 0.7*s;
+    for (let side = -1; side <= 1; side += 2) {
+      const bx = x + side * tw/2;
+      ctx.beginPath();
+      ctx.moveTo(bx, cy + 10*s);
+      ctx.quadraticCurveTo(bx + side*4*s, cy + 5*s, bx + side*7*s, cy + 8*s);
+      ctx.stroke();
+    }
+
+    // Curved roof eave
+    const ey = cy + 4 * s;
+    ctx.beginPath();
+    ctx.moveTo(x - eaveW/2, ey + 5*s);
+    ctx.bezierCurveTo(x - eaveW*0.3, ey, x + eaveW*0.3, ey, x + eaveW/2, ey + 5*s);
+    ctx.lineTo(x + eaveW/2 + 2, ey + 8*s);
+    ctx.lineTo(x - eaveW/2 - 2, ey + 8*s);
+    ctx.closePath();
+    ctx.fillStyle = i === 0 ? 'rgba(8,16,30,0.95)' : 'rgba(10,20,36,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = color + '80'; ctx.lineWidth = 0.8*s; ctx.stroke();
+
+    // Upturned eave tips
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath();
+      ctx.moveTo(x + side * (eaveW/2 + 2), ey + 8*s);
+      ctx.quadraticCurveTo(x + side*(eaveW/2 + 8*s), ey + 5*s, x + side*(eaveW/2 + 7*s), ey);
+      ctx.strokeStyle = accent + '88'; ctx.lineWidth = s; ctx.stroke();
+    }
+
+    // Ridge tiles on top of eave
+    ctx.fillStyle = color + '40';
+    ctx.fillRect(x - eaveW/2 + 2, ey + 1, eaveW - 4, 3*s);
+
+    cy += tierH * 0.8;
+  }
+
+  // Sorin spire
+  const spireBase = y;
+  ctx.beginPath(); ctx.moveTo(x, spireBase); ctx.lineTo(x, spireBase - 30*s);
+  ctx.strokeStyle = accent + 'cc'; ctx.lineWidth = 1.5*s; ctx.stroke();
+  // Rings on sorin
+  for (let r = 0; r < 5; r++) {
+    ctx.beginPath();
+    ctx.arc(x, spireBase - 8*s - r * 4*s, (3 - r*0.4)*s, 0, Math.PI*2);
+    ctx.strokeStyle = accent + '99'; ctx.lineWidth = 0.8*s; ctx.stroke();
+  }
+  // Hōju jewel at top
+  ctx.fillStyle = accent;
+  ctx.beginPath(); ctx.arc(x, spireBase - 31*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+  if (hov) {
+    ctx.fillStyle = accent + '30';
+    ctx.beginPath(); ctx.arc(x, spireBase - 31*s, 6*s, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Shrine (Tidepool) ─────────────────────────────────────────────────────
+function drawShrineBuilding(x, y, s, color, accent, hov) {
+  const bw = 52 * s, bh = 70 * s;
+  const baseY = y + 80 * s;
+
+  // Stone steps
+  for (let step = 0; step < 3; step++) {
+    const sw = bw + (2 - step) * 14 * s;
+    const sh = 6 * s;
+    const sy = baseY + bh + step * sh * 0.7;
+    ctx.fillStyle = `rgba(${16 + step*4},${28+step*4},${46+step*4},0.9)`;
+    ctx.strokeStyle = color + '30'; ctx.lineWidth = 0.5;
+    roundRect(x - sw/2, sy, sw, sh, 1); ctx.fill(); ctx.stroke();
+  }
+
+  // Main hall body
+  ctx.fillStyle = 'rgba(10,18,34,0.9)';
+  ctx.strokeStyle = color + '55'; ctx.lineWidth = 0.8*s;
+  roundRect(x - bw/2, baseY, bw, bh, 2); ctx.fill(); ctx.stroke();
+
+  // Pillars (hashira)
+  const pillarW = 4 * s;
+  for (let p = 0; p < 4; p++) {
+    const px = x - bw/2 + (p * bw/3) - pillarW/2 + bw/6;
+    ctx.fillStyle = color + '45';
+    ctx.fillRect(px, baseY, pillarW, bh);
+  }
+
+  // Shoji windows with grid pattern
+  const winW = bw * 0.55, winH = bh * 0.4;
+  const wx = x - winW/2, wy = baseY + bh * 0.15;
+  const lit = Math.sin(t * 0.3 + 3) > -0.5;
+  ctx.fillStyle = lit ? accent + '30' : 'rgba(15,28,48,0.8)';
+  roundRect(wx, wy, winW, winH, 1); ctx.fill();
+  // Grid lines for shoji
+  ctx.strokeStyle = color + '55'; ctx.lineWidth = 0.5*s;
+  for (let row = 1; row < 4; row++) {
+    ctx.beginPath(); ctx.moveTo(wx, wy + row * winH/4); ctx.lineTo(wx+winW, wy + row*winH/4); ctx.stroke();
+  }
+  for (let col = 1; col < 4; col++) {
+    ctx.beginPath(); ctx.moveTo(wx + col*winW/4, wy); ctx.lineTo(wx + col*winW/4, wy+winH); ctx.stroke();
+  }
+  ctx.strokeStyle = color + '60'; ctx.lineWidth = 0.8*s;
+  roundRect(wx, wy, winW, winH, 1); ctx.stroke();
+
+  // Transom window above
+  ctx.fillStyle = lit ? accent + '40' : 'rgba(15,28,48,0.7)';
+  ctx.beginPath(); ctx.arc(x, baseY + 8*s, 8*s, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = color + '60'; ctx.lineWidth = 0.8*s; ctx.stroke();
+
+  // Main curved roof (irimoya)
+  const ry = baseY - 10*s, rw = bw + 32*s;
+  ctx.beginPath();
+  ctx.moveTo(x - rw/2, ry + 18*s);
+  ctx.bezierCurveTo(x - rw*0.25, ry, x + rw*0.25, ry, x + rw/2, ry + 18*s);
+  ctx.lineTo(x + rw/2 + 3, ry + 22*s);
+  ctx.lineTo(x - rw/2 - 3, ry + 22*s);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(8,15,28,0.95)'; ctx.fill();
+  ctx.strokeStyle = color + '80'; ctx.lineWidth = s; ctx.stroke();
+  // Upswept tips
+  for (let side = -1; side <= 1; side += 2) {
+    ctx.beginPath();
+    ctx.moveTo(x + side*(rw/2+3), ry+22*s);
+    ctx.quadraticCurveTo(x + side*(rw/2+10*s), ry+16*s, x+side*(rw/2+8*s), ry+10*s);
+    ctx.strokeStyle = accent+'88'; ctx.lineWidth = s; ctx.stroke();
+  }
+
+  // Upper gable roof
+  const gr = baseY - 24*s, grw = bw + 12*s;
+  ctx.beginPath();
+  ctx.moveTo(x - grw/2, gr + 12*s);
+  ctx.lineTo(x, gr);
+  ctx.lineTo(x + grw/2, gr + 12*s);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(10,18,34,0.92)'; ctx.fill();
+  ctx.strokeStyle = color + '70'; ctx.lineWidth = 0.8*s; ctx.stroke();
+  // Chigi (crossed finials on ridge)
+  ctx.strokeStyle = accent + '99'; ctx.lineWidth = s;
+  ctx.beginPath(); ctx.moveTo(x-4*s, gr); ctx.lineTo(x+4*s, gr-10*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+4*s, gr); ctx.lineTo(x-4*s, gr-10*s); ctx.stroke();
+
+  // Hanging lantern
+  const lx = x, ly = baseY + bh * 0.65;
+  const glow = 0.5 + 0.5 * Math.sin(t * 2 + 1);
+  ctx.fillStyle = `rgba(201,169,110,${0.6 + glow*0.3})`;
+  ctx.beginPath(); ctx.ellipse(lx, ly, 5*s, 7*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = accent + '80'; ctx.lineWidth = 0.5*s; ctx.stroke();
+  if (hov) {
+    ctx.fillStyle = `rgba(201,169,110,${0.1 + glow * 0.12})`;
+    ctx.beginPath(); ctx.arc(lx, ly, 18*s, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Tower (Observatory) ───────────────────────────────────────────────────
+function drawTowerBuilding(x, y, s, color, accent, hov) {
+  const floors = 5;
+  const floorH = 22 * s;
+  const bw = 58 * s;
+  let fy = y + 20*s;
+
+  // Base stone platform
+  ctx.fillStyle = 'rgba(10,20,36,0.92)';
+  ctx.strokeStyle = color + '40'; ctx.lineWidth = s;
+  roundRect(x - bw/2 - 8*s, fy + floors*floorH, bw + 16*s, 10*s, 2);
+  ctx.fill(); ctx.stroke();
+
+  for (let f = 0; f < floors; f++) {
+    const fw = bw - f * 5*s;
+    const fx = x - fw/2;
+
+    // Floor body
+    ctx.fillStyle = f % 2 === 0 ? 'rgba(10,18,32,0.9)' : 'rgba(13,23,40,0.85)';
+    ctx.strokeStyle = color + '45'; ctx.lineWidth = 0.7*s;
+    ctx.fillRect(fx, fy, fw, floorH - 2);
+    ctx.strokeRect(fx, fy, fw, floorH - 2);
+
+    // Pillars
+    ctx.fillStyle = color + '30';
+    ctx.fillRect(fx, fy, 3*s, floorH-2);
+    ctx.fillRect(fx+fw-3*s, fy, 3*s, floorH-2);
+
+    // Window openings
+    const numW = f < 3 ? 3 : 2;
+    for (let wi = 0; wi < numW; wi++) {
+      const wx = fx + (wi + 0.5) * fw/numW - 4*s;
+      const wy = fy + 4*s;
+      const lit = Math.sin(t*0.5 + f*1.7 + wi*2.8 + 5) > -0.2;
+      ctx.fillStyle = lit ? accent + '55' : 'rgba(18,32,52,0.85)';
+      roundRect(wx, wy, 8*s, floorH - 9*s, 1); ctx.fill();
+      if (lit) { ctx.fillStyle = accent+'20'; roundRect(wx-2,wy-1,12*s,floorH-7*s,1); ctx.fill(); }
+      ctx.strokeStyle = color+'50'; ctx.lineWidth=0.5*s;
+      roundRect(wx, wy, 8*s, floorH - 9*s, 1); ctx.stroke();
+    }
+
+    // Bracket (bracket sets supporting eave)
+    ctx.strokeStyle = color + '50'; ctx.lineWidth = 0.6*s;
+    for (let side = -1; side <= 1; side += 2) {
+      for (let br = 0; br < 3; br++) {
+        const bx = x + side * (fw/2 - br*5*s - 4*s);
+        ctx.beginPath(); ctx.moveTo(bx, fy); ctx.lineTo(bx + side*3*s, fy - 3*s); ctx.stroke();
+      }
+    }
+
+    // Curved eave between floors
+    const ew = fw + 20*s;
+    ctx.beginPath();
+    ctx.moveTo(x - ew/2, fy - 1);
+    ctx.bezierCurveTo(x - ew*0.3, fy - 5*s, x + ew*0.3, fy - 5*s, x + ew/2, fy - 1);
+    ctx.lineTo(x + ew/2 + 2, fy + 3*s);
+    ctx.lineTo(x - ew/2 - 2, fy + 3*s);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(8,15,28,0.95)'; ctx.fill();
+    ctx.strokeStyle = color + '75'; ctx.lineWidth = 0.8*s; ctx.stroke();
+    // Upswept tips
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath();
+      ctx.moveTo(x + side*(ew/2+2), fy+3*s);
+      ctx.quadraticCurveTo(x+side*(ew/2+7*s), fy, x+side*(ew/2+6*s), fy-4*s);
+      ctx.strokeStyle = accent+'70'; ctx.lineWidth=0.8*s; ctx.stroke();
+    }
+
+    fy -= floorH;
+  }
+
+  // Roof cap
+  const roofY = fy + floorH;
+  const roofW = bw - floors*5*s + 18*s;
+  ctx.beginPath();
+  ctx.moveTo(x - roofW/2, roofY + 8*s);
+  ctx.lineTo(x, roofY);
+  ctx.lineTo(x + roofW/2, roofY + 8*s);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(8,14,26,0.95)'; ctx.fill();
+  ctx.strokeStyle = color+'80'; ctx.lineWidth=s; ctx.stroke();
+
+  // Observatory dome/telescope element
+  ctx.strokeStyle = accent+'99'; ctx.lineWidth=1.5*s;
+  ctx.beginPath(); ctx.moveTo(x, roofY); ctx.lineTo(x, roofY-20*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x-6*s, roofY-16*s); ctx.lineTo(x+10*s, roofY-20*s); ctx.stroke();
+  ctx.fillStyle = accent+'cc';
+  ctx.beginPath(); ctx.arc(x, roofY-20*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+  if (hov) {
+    ctx.fillStyle = accent+'20';
+    ctx.beginPath(); ctx.arc(x, roofY-20*s, 10*s, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Temple Gate (Dojo) ────────────────────────────────────────────────────
+function drawTempleGate(x, y, s, color, accent, hov) {
+  const gateW = 64*s, gateH = 80*s;
+  const baseY = y + 70*s;
+  const pillarW = 8*s;
+
+  // Torii-style approach path
+  ctx.strokeStyle = color + '20'; ctx.lineWidth = 0.5*s;
+  ctx.setLineDash([3,5]);
+  ctx.beginPath(); ctx.moveTo(x, baseY+gateH+10*s); ctx.lineTo(x, baseY+gateH+35*s);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Two main pillars
+  for (let side = -1; side <= 1; side += 2) {
+    const px = x + side * (gateW/2 - pillarW/2);
+    // Pillar
+    ctx.fillStyle = 'rgba(10,18,34,0.92)';
+    ctx.strokeStyle = color + '55'; ctx.lineWidth = 0.7*s;
+    roundRect(px - pillarW/2, baseY, pillarW, gateH, 1);
+    ctx.fill(); ctx.stroke();
+    // Pillar base stone
+    ctx.fillStyle = 'rgba(12,22,40,0.9)';
+    roundRect(px - pillarW/2 - 3*s, baseY+gateH, pillarW+6*s, 8*s, 1);
+    ctx.fill(); ctx.stroke();
+    // Red accent stripe on pillar
+    ctx.fillStyle = accent + '30';
+    ctx.fillRect(px - pillarW/2 + 1.5*s, baseY + gateH*0.2, 2*s, gateH*0.6);
+  }
+
+  // Gate door (open, ornate)
+  const doorW = gateW - pillarW*2 - 4*s;
+  const doorH = gateH * 0.72;
+  const doorX = x - doorW/2;
+  const doorY = baseY + gateH - doorH;
+  ctx.fillStyle = 'rgba(8,14,26,0.6)';
+  roundRect(doorX, doorY, doorW, doorH, 2); ctx.fill();
+  // Door frame
+  ctx.strokeStyle = color + '60'; ctx.lineWidth = 0.8*s;
+  roundRect(doorX, doorY, doorW, doorH, 2); ctx.stroke();
+  // Arch over door
+  ctx.beginPath();
+  ctx.arc(x, doorY, doorW/2 + 2*s, Math.PI, 0);
+  ctx.strokeStyle = accent+'50'; ctx.lineWidth=s; ctx.stroke();
+
+  // Roof (niju-mon style - double roof)
+  for (let tier = 0; tier < 2; tier++) {
+    const ry = baseY - 16*s - tier * 22*s;
+    const rw = (tier === 0 ? gateW + 32*s : gateW + 16*s);
+    // Roof body
+    ctx.beginPath();
+    ctx.moveTo(x - rw/2, ry + 12*s);
+    ctx.bezierCurveTo(x - rw*0.3, ry, x + rw*0.3, ry, x + rw/2, ry + 12*s);
+    ctx.lineTo(x + rw/2 + 3, ry + 16*s);
+    ctx.lineTo(x - rw/2 - 3, ry + 16*s);
+    ctx.closePath();
+    ctx.fillStyle = tier === 0 ? 'rgba(8,15,28,0.95)' : 'rgba(10,18,34,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = color + (tier===0?'90':'70'); ctx.lineWidth=s; ctx.stroke();
+    // Upswept tips
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath();
+      ctx.moveTo(x+side*(rw/2+3), ry+16*s);
+      ctx.quadraticCurveTo(x+side*(rw/2+10*s), ry+10*s, x+side*(rw/2+8*s), ry+4*s);
+      ctx.strokeStyle=accent+(tier===0?'99':'66'); ctx.lineWidth=s; ctx.stroke();
+    }
+    // Ridge tile row
+    ctx.fillStyle = color+'35';
+    ctx.fillRect(x-rw/2+6, ry+2, rw-12, 3*s);
+  }
+
+  // Torii-style crossbeam above upper roof
+  const tb = baseY - 44*s;
+  ctx.fillStyle = 'rgba(8,14,26,0.9)';
+  ctx.strokeStyle = color+'70'; ctx.lineWidth=0.8*s;
+  roundRect(x - gateW/2 - 4*s, tb, gateW + 8*s, 5*s, 1); ctx.fill(); ctx.stroke();
+
+  // Hanging bell
+  const bellY = baseY + gateH*0.3;
+  const bellSwing = Math.sin(t * 0.6) * 3;
+  ctx.save(); ctx.translate(x + bellSwing, bellY);
+  ctx.strokeStyle = color+'70'; ctx.lineWidth=0.5*s;
+  ctx.beginPath(); ctx.moveTo(0, -8*s); ctx.lineTo(0, 0); ctx.stroke();
+  ctx.fillStyle = color+'80';
+  ctx.beginPath();
+  ctx.moveTo(-4*s, 0); ctx.bezierCurveTo(-5*s, 4*s, -5*s, 8*s, 0, 10*s);
+  ctx.bezierCurveTo(5*s, 8*s, 5*s, 4*s, 4*s, 0); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Hov glow at gate threshold
+  if (hov) {
+    const glow = 0.5 + 0.5*Math.sin(t*3);
+    ctx.fillStyle = `rgba(170,136,204,${0.08 + glow*0.06})`;
+    ctx.fillRect(doorX-4, doorY, doorW+8, doorH+20);
+  }
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w,y, x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h, x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h, x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y, x+r,y);
+  ctx.closePath();
+}
+
+// ── Interaction ────────────────────────────────────────────────────────────
+let hoveredBuilding = null;
+const tip = document.getElementById('tip');
+
+canvas.addEventListener('mousemove', e => {
+  const b = hitBuilding(e.clientX, e.clientY);
+  if (b !== hoveredBuilding) {
+    hoveredBuilding = b;
+    if (b) {
+      document.getElementById('tip-title').textContent = b.name;
+      document.getElementById('tip-jp').textContent = b.jp;
+      document.getElementById('tip-desc').textContent = b.desc;
+      tip.classList.add('visible');
+    } else {
+      tip.classList.remove('visible');
+    }
+  }
+  if (b) {
+    let tx = e.clientX + 16, ty = e.clientY - 60;
+    if (tx + 210 > W) tx = e.clientX - 220;
+    tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+  }
+  canvas.style.cursor = b ? 'pointer' : 'default';
+});
+
+canvas.addEventListener('click', e => {
+  const b = hitBuilding(e.clientX, e.clientY);
+  if (!b) return;
+  // If running inside BrowserView (Electron), delegate to chrome panel
+  if (window.__surfer_openPanel) {
+    window.__surfer_openPanel(b.id);
+  } else {
+    openPanel(b.id);
+  }
+});
+
+// Search
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+document.getElementById('search-go').addEventListener('click', doSearch);
+
+function doSearch() {
+  const val = document.getElementById('search-input').value.trim();
+  if (!val) return;
+  if (window.surfer) {
+    surfer.navigate(val);
+  } else {
+    // fallback for preview
+    let url = val;
+    if (!url.startsWith('http')) url = url.includes('.') ? 'https://' + url : 'https://search.brave.com/search?q=' + encodeURIComponent(val);
+    window.location.href = url;
+  }
+}
+
+// ── Panel system ───────────────────────────────────────────────────────────
+let activePanel = null;
+
+function openPanel(id) {
+  if (activePanel === id) { closePanel(); return; }
+  activePanel = id;
+  const b = BUILDINGS.find(b => b.id === id);
+  document.getElementById('panel-title').textContent = b ? `${b.name}` : id;
+  document.getElementById('panel-title-jp').textContent = b ? b.jp : '';
+  const panel = document.getElementById('panel');
+  panel.classList.add('open');
+  renderPanelBody(id);
+}
+
+function closePanel() {
+  activePanel = null;
+  document.getElementById('panel').classList.remove('open');
+}
+window.closePanel = closePanel;
+
+function renderPanelBody(id) {
+  const el = document.getElementById('panel-body');
+  if (id === 'archive')     renderArchive(el);
+  if (id === 'dojo')        renderDojo(el);
+  if (id === 'tidepool')    renderTidepool(el);
+  if (id === 'observatory') renderObservatory(el);
+}
+
+// ── Archive ────────────────────────────────────────────────────────────────
+function getFavicon(url) {
+  try { return `https://www.google.com/s2/favicons?sz=32&domain=${new URL(url).hostname}`; } catch { return ''; }
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now()-ts)/1000);
+  if (s<60) return 'just now'; if (s<3600) return `${Math.floor(s/60)}m ago`;
+  if (s<86400) return `${Math.floor(s/3600)}h ago`; return `${Math.floor(s/86400)}d ago`;
+}
+
+function renderArchive(el) {
+  const getBookmarks = window.surfer ? surfer.getBookmarks() : Promise.resolve([]);
+  getBookmarks.then(bms => {
+    el.innerHTML = `
+      <input class="p-input" id="arch-q" placeholder="Search your archive…">
+      <div id="arch-list"></div>
+    `;
+    const listEl = el.querySelector('#arch-list');
+    const searchEl = el.querySelector('#arch-q');
+    function renderList(items) {
+      if (!items.length) { listEl.innerHTML = '<div class="p-empty">No saved pages yet.<br>Press ⊕ in the toolbar to archive any page.</div>'; return; }
+      listEl.innerHTML = '';
+      items.forEach(bm => {
+        const d = document.createElement('div'); d.className = 'p-item';
+        d.innerHTML = `<img src="${getFavicon(bm.url)}" width="14" height="14" style="flex-shrink:0" onerror="this.style.display='none'"><div class="p-item-body"><div class="p-item-title">${bm.title||bm.url}</div><div class="p-item-sub">${bm.url}</div></div><button class="p-item-del" data-id="${bm.id}">✕</button>`;
+        d.addEventListener('click', ev => { if(ev.target.dataset.id) return; surfer && surfer.navigate(bm.url); closePanel(); });
+        d.querySelector('.p-item-del').addEventListener('click', async () => { surfer && await surfer.removeBookmark(bm.id); renderArchive(el); });
+        listEl.appendChild(d);
+      });
+    }
+    renderList(bms);
+    searchEl.addEventListener('input', () => {
+      const q = searchEl.value.toLowerCase();
+      renderList(bms.filter(b => (b.title||'').toLowerCase().includes(q) || b.url.toLowerCase().includes(q)));
+    });
+  });
+}
+
+// ── Dojo ───────────────────────────────────────────────────────────────────
+let dojoHistory = [];
+function renderDojo(el) {
+  el.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="p-btn p-btn-sm" id="d-sum">Summarize page</button>
+      <button class="p-btn p-btn-sm" id="d-tldr">TL;DR</button>
+      <button class="p-btn p-btn-sm" id="d-clear">Clear</button>
+    </div>
+    <div id="dojo-messages"></div>
+    <textarea class="p-input" id="dojo-ta" placeholder="Ask about this page…"></textarea>
+    <button class="p-btn" id="d-send">→ Ask the Dojo</button>
+  `;
+  const msgEl = el.querySelector('#dojo-messages');
+  const ta = el.querySelector('#dojo-ta');
+
+  function addMsg(role, text) {
+    const d = document.createElement('div');
+    d.className = 'dojo-msg ' + (role==='user'?'dojo-user':role==='think'?'dojo-think':'dojo-ai');
+    d.textContent = text; msgEl.appendChild(d); msgEl.scrollTop = 99999;
+    if (role !== 'think') dojoHistory.push({ role: role==='user'?'user':'assistant', content: text });
+    return d;
+  }
+  dojoHistory.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'dojo-msg ' + (m.role==='user'?'dojo-user':'dojo-ai');
+    d.textContent = m.content; msgEl.appendChild(d);
+  });
+
+  async function ask(userMsg) {
+    const think = addMsg('think', '…consulting the scroll…');
+    let page = { url:'', title:'', text:'' };
+    if (window.surfer) page = await surfer.getPageText();
+    const sys = `You are the Dojo, a wise AI assistant inside the Surfer browser. Current page: "${page.title}" (${page.url})\n\n${page.text.slice(0,6000)}\n\nBe concise. Plain text only, no markdown.`;
+    const msgs = [...dojoHistory.filter(m=>m.content!==userMsg).slice(-6), {role:'user',content:userMsg}];
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sys,messages:msgs})});
+      const data = await res.json();
+      think.remove();
+      addMsg('ai', data.content?.map(c=>c.text||'').join('')||'No response.');
+    } catch { think.remove(); addMsg('ai','Could not reach the Dojo.'); }
+  }
+
+  el.querySelector('#d-sum').onclick = () => { addMsg('user','Summarize this page.'); ask('Summarize this page.'); };
+  el.querySelector('#d-tldr').onclick = () => { addMsg('user','TL;DR in 3 points.'); ask('TL;DR in 3 points.'); };
+  el.querySelector('#d-clear').onclick = () => { dojoHistory=[]; msgEl.innerHTML=''; };
+  el.querySelector('#d-send').onclick = () => { const v=ta.value.trim(); if(!v) return; ta.value=''; addMsg('user',v); ask(v); };
+  ta.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();el.querySelector('#d-send').click();} });
+}
+
+// ── Tidepool ───────────────────────────────────────────────────────────────
+function renderTidepool(el) {
+  const getP = window.surfer ? surfer.getPasswords() : Promise.resolve([]);
+  getP.then(passwords => {
+    el.innerHTML = `
+      <div class="p-notice">🔒 All secrets stored locally on your machine only.</div>
+      <input class="p-input" id="tp-site" placeholder="Site (e.g. github.com)">
+      <input class="p-input" id="tp-user" placeholder="Username / Email">
+      <div class="p-row"><input class="p-input p-flex1" id="tp-pass" type="password" placeholder="Password"><button class="p-btn p-btn-sm" id="tp-gen">Generate</button></div>
+      <button class="p-btn" id="tp-save">Save secret</button>
+      <div class="p-section">Saved secrets</div>
+      <div id="tp-list"></div>
+    `;
+    const listEl = el.querySelector('#tp-list');
+    function renderList(items) {
+      if (!items.length) { listEl.innerHTML = '<div class="p-empty">No secrets yet.</div>'; return; }
+      listEl.innerHTML = '';
+      items.forEach(pw => {
+        const d = document.createElement('div'); d.className = 'p-item';
+        d.innerHTML = `<div class="p-item-body"><div class="p-item-title">${pw.site}</div><div class="p-item-sub">${pw.username}</div></div><button class="p-btn p-btn-sm" style="margin-right:6px" data-show="${pw.id}">show</button><button class="p-item-del" data-id="${pw.id}">✕</button>`;
+        d.querySelector('[data-show]').addEventListener('click', function() {
+          if (this.textContent==='show') { this.textContent=pw.password; this.style.color='#c9a96e'; setTimeout(()=>{this.textContent='show';this.style.color='';},4000); }
+        });
+        d.querySelector('.p-item-del').addEventListener('click', async () => { surfer && await surfer.deletePassword(pw.id); renderTidepool(el); });
+        listEl.appendChild(d);
+      });
+    }
+    renderList(passwords);
+    el.querySelector('#tp-gen').onclick = () => {
+      const c='abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%';
+      el.querySelector('#tp-pass').value=Array.from({length:20},()=>c[Math.floor(Math.random()*c.length)]).join('');
+      el.querySelector('#tp-pass').type='text';
+    };
+    el.querySelector('#tp-save').onclick = async () => {
+      const site=el.querySelector('#tp-site').value.trim(), username=el.querySelector('#tp-user').value.trim(), password=el.querySelector('#tp-pass').value.trim();
+      if(!site||!password) return;
+      surfer && await surfer.savePassword({site,username,password});
+      renderTidepool(el);
+    };
+  });
+}
+
+// ── Observatory ────────────────────────────────────────────────────────────
+function renderObservatory(el) {
+  const getB = window.surfer ? surfer.getBlockedCount() : Promise.resolve(0);
+  const getU = window.surfer ? surfer.getCurrentUrl() : Promise.resolve('');
+  Promise.all([getB, getU]).then(([blocked, url]) => {
+    const https = url.startsWith('https://');
+    let domain = '—'; try { domain = new URL(url).hostname; } catch {}
+    el.innerHTML = `
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(180,210,230,0.1);border-radius:8px;padding:12px;margin-bottom:16px">
+        <div class="p-section" style="margin-top:0">Current site</div>
+        <div style="font-size:14px;color:#c8dce8;word-break:break-all">${domain}</div>
+      </div>
+      <div class="obs-row"><span class="obs-label">Trackers blocked</span><span class="obs-val">${blocked}</span></div>
+      <div class="obs-row"><span class="obs-label">Connection</span><span class="obs-val ${https?'good':'bad'}">${https?'✓ HTTPS':'✗ HTTP'}</span></div>
+      <div class="obs-row"><span class="obs-label">Telemetry to Surfer</span><span class="obs-val good">None</span></div>
+      <div class="obs-row"><span class="obs-label">History stored</span><span class="obs-val good">Local only</span></div>
+      <div class="obs-row"><span class="obs-label">Passwords stored</span><span class="obs-val good">Local only</span></div>
+      <div class="p-section">Blocked domains</div>
+      ${['google-analytics.com','googletagmanager.com','doubleclick.net','facebook.com/tr','connect.facebook.net','hotjar.com','mixpanel.com','segment.com','amplitude.com']
+        .map(t=>`<div style="font-size:11px;color:rgba(180,210,230,0.4);padding:4px 0;border-bottom:1px solid rgba(180,210,230,0.06)">✕ ${t}</div>`).join('')}
+    `;
+  });
+}
+
+// ── History Drawer ────────────────────────────────────────────────────────
+let historyDrawerOpen = false;
+const historyToggle = document.getElementById('history-toggle');
+const historyDrawer = document.getElementById('history-drawer');
+const historyEntries = document.getElementById('history-entries');
+
+function timeAgoHome(ts) {
+  const s = Math.floor((Date.now()-ts)/1000);
+  if (s<60) return 'just now';
+  if (s<3600) return Math.floor(s/60)+'m ago';
+  if (s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+
+function loadHistory() {
+  const getter = window.__surfer_getHistory ? window.__surfer_getHistory()
+                : window.surfer ? surfer.getHistory()
+                : Promise.resolve([]);
+  getter.then(hist => {
+    historyEntries.innerHTML = '';
+    const recent = hist.slice(0, 40);
+    if (!recent.length) {
+      historyEntries.innerHTML = '<div style="color:rgba(180,210,230,0.3);font-size:12px;font-style:italic;font-family:Georgia,serif;white-space:nowrap">No pages visited yet…</div>';
+      return;
+    }
+    recent.forEach(entry => {
+      const el = document.createElement('div');
+      el.className = 'h-entry';
+      el.innerHTML = `
+        <div class="h-entry-title">${entry.title || entry.url}</div>
+        <div class="h-entry-url">${entry.url}</div>
+        <div class="h-entry-time">${timeAgoHome(entry.ts)}</div>
+      `;
+      el.addEventListener('click', () => {
+        if (window.surfer) surfer.navigate(entry.url);
+        else if (window.__surfer_openPanel) window.location.href = entry.url;
+      });
+      historyEntries.appendChild(el);
+    });
+  });
+}
+
+historyToggle.addEventListener('click', () => {
+  historyDrawerOpen = !historyDrawerOpen;
+  historyToggle.classList.toggle('open', historyDrawerOpen);
+  historyDrawer.classList.toggle('open', historyDrawerOpen);
+  if (historyDrawerOpen) loadHistory();
+});
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+resize();
+window.addEventListener('resize', resize);
+draw();
+</script>
+</body>
+</html>

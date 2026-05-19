@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="220" fill="#06080d"/>
+  <!-- Moon -->
+  <circle cx="680" cy="280" r="90" fill="#e8dfc4" opacity="0.9"/>
+  <ellipse cx="655" cy="265" rx="30" ry="22" fill="#d4c8a8" opacity="0.3"/>
+  <!-- Big wave - Great Wave style -->
+  <path d="M 60 680 Q 180 480 320 560 Q 420 620 460 520 Q 500 400 620 460 Q 740 520 780 420 Q 820 300 920 380 L 960 680 Z" fill="#0a2040" opacity="0.95"/>
+  <path d="M 60 720 Q 200 540 360 610 Q 460 660 500 560 Q 540 440 660 500 Q 780 560 820 450 Q 860 340 960 400 L 960 720 Z" fill="#0c2848" opacity="0.9"/>
+  <!-- Foam crest -->
+  <path d="M 320 560 Q 360 510 400 530 Q 380 490 340 500 Z" fill="#c8dce8" opacity="0.7"/>
+  <path d="M 620 460 Q 660 415 700 435 Q 680 395 640 405 Z" fill="#c8dce8" opacity="0.6"/>
+  <!-- Wave outline strokes -->
+  <path d="M 60 700 Q 220 520 380 595 Q 480 645 520 545 Q 560 425 680 485 Q 800 545 840 435" fill="none" stroke="#c8dce8" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 60 740 Q 240 580 400 645 Q 500 690 540 590" fill="none" stroke="#c8dce8" stroke-width="4" stroke-linecap="round" opacity="0.3"/>
+  <!-- Ink birds -->
+  <path d="M 180 340 Q 200 325 220 340" fill="none" stroke="#c8dce8" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 240 300 Q 260 285 280 300" fill="none" stroke="#c8dce8" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 150 370 Q 165 358 180 370" fill="none" stroke="#c8dce8" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <!-- Japanese character 波 (wave) subtle watermark -->
+  <text x="512" y="880" font-family="serif" font-size="120" text-anchor="middle" fill="#c9a96e" opacity="0.18">波</text>
+</svg>
